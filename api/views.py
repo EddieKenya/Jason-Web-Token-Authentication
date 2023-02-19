@@ -8,6 +8,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import BasePermission, SAFE_METHODS,AllowAny
 from rest_framework.views import APIView
 from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import filters
 
 class PostUserPermissions(BasePermission):
     message = "youre not authenticated to edit this post"
@@ -16,6 +18,8 @@ class PostUserPermissions(BasePermission):
         if request.method in SAFE_METHODS:
             return True
         return obj.author == request.user
+
+
 
 
 class UserRegistration(APIView):
@@ -42,6 +46,13 @@ class CreatePost(generics.CreateAPIView):
     queryset = Post.objects.all()
     serializer_class = CreateSerializer
 
+class UserPost(generics.ListAPIView):
+    serializer_class = PostListSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return Post.postobjects.filter(author = user)
+
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -55,3 +66,18 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
+
+class BlackListTokenView(APIView):
+    def post (self, request):
+        try:
+            refresh_token = request.data['refresh_token']
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except Exception as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+class PostSearchFilter(generics.ListAPIView):
+        queryset = Post.postobjects.all()
+        serializer_class = PostListSerializer
+        filter_backends = [filters.SearchFilter]
+        search_fields = ['^title']
